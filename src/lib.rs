@@ -49,6 +49,11 @@ impl<K, V> Node<K, V>
             Ordering::Equal => unimplemented!(),
         }
     }
+
+    pub fn children(&self) -> usize {
+        self.left.as_ref().map_or(0, |node| 1 + node.children()) +
+        self.right.as_ref().map_or(0, |node| 1 + node.children())
+    }
 }
 
 
@@ -101,5 +106,6 @@ mod tests {
             value: (),
         };
         assert_eq!(node_root, node_root_1);
+        assert_eq!(node_root.children(), 2);
     }
 }
