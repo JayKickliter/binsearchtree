@@ -8,8 +8,7 @@ pub trait KV: Sized + PartialEq {}
 /// A node in a binary search tree
 #[derive(Debug, PartialEq, Clone)]
 pub struct Node<K, V>
-    where K: Ord + PartialEq,
-          V: Ord + PartialEq
+    where K: Ord + PartialEq
 {
     /// This node's key
     key: K,
@@ -22,8 +21,7 @@ pub struct Node<K, V>
 }
 
 impl<K, V> Node<K, V>
-    where K: Ord + PartialEq,
-          V: Ord + PartialEq
+    where K: Ord + PartialEq
 {
     pub fn new(k: K, v: V) -> Node<K, V> {
         Node {
@@ -34,7 +32,7 @@ impl<K, V> Node<K, V>
         }
     }
 
-    pub fn insert(&mut self, node: Node<K,V>) {
+    pub fn insert(&mut self, node: Node<K, V>) {
         match self.key.cmp(&node.key) {
             Ordering::Less => {
                 match self.right {
