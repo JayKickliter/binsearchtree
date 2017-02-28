@@ -32,21 +32,32 @@ impl<K, V> Node<K, V>
         }
     }
 
-    pub fn insert(&mut self, node: Node<K, V>) {
+    pub fn insert(&mut self, node: Node<K, V>) -> Option<Node<K, V>> {
+        use ::std::mem;
         match self.key.cmp(&node.key) {
             Ordering::Less => {
                 match self.left {
-                    None => self.right = Some(Box::new(node)),
+                    None => {
+                        self.right = Some(Box::new(node));
+                        None
+                    }
                     Some(ref mut right) => right.insert(node),
                 }
             }
             Ordering::Greater => {
                 match self.left {
-                    None => self.left = Some(Box::new(node)),
+                    None => {
+                        self.left = Some(Box::new(node));
+                        None
+                    }
                     Some(ref mut left) => left.insert(node),
                 }
             }
-            Ordering::Equal => unimplemented!(),
+            Ordering::Equal => {
+                let mut node = node;
+                mem::swap(&mut self.value, &mut node.value);
+                Some(node)
+            }
         }
     }
 
