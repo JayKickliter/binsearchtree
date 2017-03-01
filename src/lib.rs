@@ -36,7 +36,7 @@ impl<K, V> Node<K, V>
         use ::std::mem;
         match self.key.cmp(&node.key) {
             Ordering::Less => {
-                match self.left {
+                match self.right {
                     None => {
                         self.right = Some(Box::new(node));
                         None
@@ -118,7 +118,6 @@ mod tests {
 
         node_root.insert(node_right);
         node_root.insert(node_left);
-        println!("{:#?}", node_root);
         let node_root_1 = Node {
             left: Some(Box::new(Node::new(0, ()))),
             right: Some(Box::new(Node::new(2, ()))),
@@ -127,6 +126,14 @@ mod tests {
         };
         assert_eq!(node_root, node_root_1);
         assert_eq!(node_root.children(), 2);
+    }
+
+    #[test]
+    fn node_insert_duplicate_pass() {
+        let mut node_root = Node::new(0, 'a');
+        let node_1 = Node::new(1, 'b');
+        assert_eq!(node_root.insert(node_1.clone()), None);
+        assert_eq!(node_root.insert(node_1.clone()), Some(node_1));
     }
 
     #[test]
