@@ -32,32 +32,28 @@ impl<K, V> Node<K, V>
         }
     }
 
-    pub fn insert(&mut self, node: Node<K, V>) -> Option<Node<K, V>> {
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         use ::std::mem;
-        match self.key.cmp(&node.key) {
+        match self.key.cmp(&key) {
             Ordering::Less => {
                 match self.right {
                     None => {
-                        self.right = Some(Box::new(node));
+                        self.right = Some(Box::new(Node::new(key, value)));
                         None
                     }
-                    Some(ref mut right) => right.insert(node),
+                    Some(ref mut right) => right.insert(key, value),
                 }
             }
             Ordering::Greater => {
                 match self.left {
                     None => {
-                        self.left = Some(Box::new(node));
+                        self.left = Some(Box::new(Node::new(key, value)));
                         None
                     }
-                    Some(ref mut left) => left.insert(node),
+                    Some(ref mut left) => left.insert(key, value),
                 }
             }
-            Ordering::Equal => {
-                let mut node = node;
-                mem::swap(&mut self.value, &mut node.value);
-                Some(node)
-            }
+            Ordering::Equal => Some(mem::replace(&mut self.value, value)),
         }
     }
 
@@ -112,17 +108,15 @@ mod tests {
 
     #[test]
     fn node_insert_pass() {
-        let mut node_root = Node::new(1, ());
-        let node_left = Node::new(0, ());
-        let node_right = Node::new(2, ());
+        let mut node_root = Node::new(1, 'b');
+        node_root.insert(0, 'a');
+        node_root.insert(2, 'c');
 
-        node_root.insert(node_right);
-        node_root.insert(node_left);
         let node_root_1 = Node {
-            left: Some(Box::new(Node::new(0, ()))),
-            right: Some(Box::new(Node::new(2, ()))),
+            left: Some(Box::new(Node::new(0, 'a'))),
+            right: Some(Box::new(Node::new(2, 'c'))),
             key: 1,
-            value: (),
+            value: 'b',
         };
         assert_eq!(node_root, node_root_1);
         assert_eq!(node_root.children(), 2);
@@ -131,18 +125,15 @@ mod tests {
     #[test]
     fn node_insert_duplicate_pass() {
         let mut node_root = Node::new(0, 'a');
-        let node_1 = Node::new(1, 'b');
-        assert_eq!(node_root.insert(node_1.clone()), None);
-        assert_eq!(node_root.insert(node_1.clone()), Some(node_1));
+        assert_eq!(node_root.insert(1, 'b'), None);
+        assert_eq!(node_root.insert(1, 'b'), Some('b'));
     }
 
     #[test]
     fn node_test_get_pass() {
         let mut node_root = Node::new(1, 'b');
-        let node_left = Node::new(0, 'a');
-        let node_right = Node::new(2, 'c');
-        node_root.insert(node_right);
-        node_root.insert(node_left);
+        node_root.insert(0, 'a');
+        node_root.insert(2, 'c');
 
         assert_eq!(node_root.get(&0), Some(&'a'));
         assert_eq!(node_root.get(&1), Some(&'b'));
