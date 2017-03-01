@@ -33,7 +33,6 @@ impl<K, V> Node<K, V>
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        use ::std::mem;
         match self.key.cmp(&key) {
             Ordering::Less => {
                 match self.right {
@@ -53,7 +52,7 @@ impl<K, V> Node<K, V>
                     Some(ref mut left) => left.insert(key, value),
                 }
             }
-            Ordering::Equal => Some(mem::replace(&mut self.value, value)),
+            Ordering::Equal => Some(::std::mem::replace(&mut self.value, value)),
         }
     }
 
@@ -68,6 +67,29 @@ impl<K, V> Node<K, V>
     pub fn children(&self) -> usize {
         self.left.as_ref().map_or(0, |node| 1 + node.children()) +
         self.right.as_ref().map_or(0, |node| 1 + node.children())
+    }
+}
+
+
+pub struct BST<K, V>
+    where K: Ord
+{
+    root: Option<Node<K, V>>,
+}
+
+impl<K, V> BST<K, V>
+    where K: Ord
+{
+    pub fn new() -> BST<K, V> {
+        BST { root: None }
+    }
+
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.root.as_mut().map_or(None, |node| node.insert(key, value))
+    }
+
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.root.as_ref().map_or(None, |node| node.get(key))
     }
 }
 
