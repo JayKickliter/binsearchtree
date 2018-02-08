@@ -59,8 +59,8 @@ impl<K, V> Node<K, V>
     pub fn get(&self, key: &K) -> Option<&V> {
         match self.key.cmp(key) {
             Ordering::Equal => Some(&self.value),
-            Ordering::Less => self.right.as_ref().map_or(None, |node| node.get(key)),
-            Ordering::Greater => self.left.as_ref().map_or(None, |node| node.get(key)),
+            Ordering::Less => self.right.as_ref().and_then(|node| node.get(key)),
+            Ordering::Greater => self.left.as_ref().and_then(|node| node.get(key)),
         }
     }
 

@@ -1,5 +1,6 @@
 use node::*;
 
+#[derive(Debug, Default)]
 pub struct Tree<K, V>
     where K: Ord
 {
@@ -18,7 +19,7 @@ impl<K, V> Tree<K, V>
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.root.as_mut().map_or(None, |node| node.insert(key, value)) {
+        match self.root.as_mut().and_then(|node| node.insert(key, value)) {
             ret @ None => {
                 // We can increase size since we didn't already have a value for this key.
                 self.size += 1;
@@ -34,6 +35,6 @@ impl<K, V> Tree<K, V>
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.root.as_ref().map_or(None, |node| node.get(key))
+        self.root.as_ref().and_then(|node| node.get(key))
     }
 }
