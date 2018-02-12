@@ -1,6 +1,7 @@
 use node::*;
+use std::default::Default;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Tree<K, V>
     where K: Ord
 {
@@ -8,14 +9,20 @@ pub struct Tree<K, V>
     root: Option<Node<K, V>>,
 }
 
-impl<K, V> Tree<K, V>
-    where K: Ord
-{
-    pub fn new() -> Tree<K, V> {
+impl<K: Ord, V> Default for Tree<K, V> {
+    fn default() -> Self {
         Tree {
             size: 0,
             root: None,
         }
+    }
+}
+
+impl<K, V> Tree<K, V>
+    where K: Ord
+{
+    pub fn new() -> Tree<K, V> {
+        Tree::default()
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
