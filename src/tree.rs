@@ -3,23 +3,21 @@ use std::default::Default;
 
 #[derive(Debug)]
 pub struct Tree<K, V>
-    where K: Ord
+where
+    K: Ord,
 {
-    size: usize,
     root: Option<Node<K, V>>,
 }
 
 impl<K: Ord, V> Default for Tree<K, V> {
     fn default() -> Self {
-        Tree {
-            size: 0,
-            root: None,
-        }
+        Tree { root: None }
     }
 }
 
 impl<K, V> Tree<K, V>
-    where K: Ord
+where
+    K: Ord,
 {
     pub fn new() -> Tree<K, V> {
         Tree::default()
@@ -29,7 +27,6 @@ impl<K, V> Tree<K, V>
         match self.root.as_mut().and_then(|node| node.insert(key, value)) {
             ret @ None => {
                 // We can increase size since we didn't already have a value for this key.
-                self.size += 1;
                 ret
             }
 
