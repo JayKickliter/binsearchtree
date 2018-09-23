@@ -39,6 +39,10 @@ impl<K: Ord, V> Tree<K, V> {
     pub fn len(&self) -> usize {
         self.0.as_ref().map_or(0, |node| node.len())
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_none()
+    }
 }
 
 pub trait KV: Sized + PartialEq {}
