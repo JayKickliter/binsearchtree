@@ -2,16 +2,11 @@ use std::cmp::Ordering;
 use std::default::Default;
 
 #[derive(Debug)]
-pub struct Tree<K, V>
-where
-    K: Ord,
-{
-    root: Option<Node<K, V>>,
-}
+pub struct Tree<K: Ord, V>(Option<Box<Node<K, V>>>);
 
 impl<K: Ord, V> Default for Tree<K, V> {
     fn default() -> Self {
-        Tree { root: None }
+        Tree(None)
     }
 }
 
@@ -24,7 +19,7 @@ where
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.root.as_mut().and_then(|node| node.insert(key, value)) {
+        match self.0.as_mut().and_then(|node| node.insert(key, value)) {
             ret @ None => {
                 // We can increase size since we didn't already have a value for this key.
                 ret
@@ -39,7 +34,7 @@ where
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.root.as_ref().and_then(|node| node.get(key))
+        self.0.as_ref().and_then(|node| node.get(key))
     }
 }
 
