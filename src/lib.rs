@@ -1,40 +1,43 @@
 use std::cmp::Ordering;
 use std::default::Default;
+use std::mem;
 
-#[derive(Debug)]
-pub struct Tree<K: Ord, V>(Option<Box<Node<K, V>>>);
+#[derive(Debug, PartialEq, Clone)]
+pub struct Tree<K, V>(Option<Box<Node<K, V>>>);
 
-impl<K: Ord, V> Default for Tree<K, V> {
+impl<K, V> Default for Tree<K, V> {
     fn default() -> Self {
         Tree(None)
     }
 }
 
-impl<K, V> Tree<K, V>
-where
-    K: Ord,
-{
+impl<K: Ord, V> Tree<K, V> {
     pub fn new() -> Tree<K, V> {
         Tree::default()
     }
 
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.0.as_mut().and_then(|node| node.insert(key, value)) {
-            ret @ None => {
-                // We can increase size since we didn't already have a value for this key.
-                ret
-            }
+    pub fn with(key: K, value: V) -> Tree<K, V> {
+        let mut tree = Self::new();
+        tree.insert(key, value);
+        tree
+    }
 
-            ret @ Some(_) => {
-                // We already have a value for this key.
-                // Return the old value but do not increment size.
-                ret
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        match &mut self.0 {
+            inner @ None => {
+                let _ = mem::replace(inner, Some(Box::new(Node::new(key, value))));
+                None
             }
+            Some(node) => node.as_mut().insert(key, value),
         }
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
         self.0.as_ref().and_then(|node| node.get(key))
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.as_ref().map_or(0, |node| node.len())
     }
 }
 
@@ -42,149 +45,111 @@ pub trait KV: Sized + PartialEq {}
 
 /// A node in a binary search tree
 #[derive(Debug, PartialEq, Clone)]
-pub struct Node<K, V>
-where
-    K: Ord,
-{
-    inner: Option<Box<InnerNode<K, V>>>,
-}
-
-impl<K: Ord, V> Default for Node<K, V> {
-    fn default() -> Self {
-        Node { inner: None }
-    }
-}
-
-/// A node in a binary search tree
-#[derive(Debug, PartialEq, Clone)]
-struct InnerNode<K, V>
-where
-    K: Ord,
-{
+struct Node<K, V> {
     /// This node's key
     key: K,
     /// This node's value
     value: V,
     /// Left child
-    left: Node<K, V>,
+    left: Tree<K, V>,
     /// Right child
-    right: Node<K, V>,
+    right: Tree<K, V>,
 }
 
-impl<K, V> Node<K, V>
-where
-    K: Ord,
-{
-    pub fn new(k: K, v: V) -> Node<K, V> {
+impl<K: Ord, V> Node<K, V> {
+    fn new(k: K, v: V) -> Node<K, V> {
         Node {
-            inner: Some(Box::new(InnerNode {
-                key: k,
-                value: v,
-                left: Node::default(),
-                right: Node::default(),
-            })),
+            key: k,
+            value: v,
+            left: Tree::default(),
+            right: Tree::default(),
         }
     }
 
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.inner {
-            None => {
-                *self = Self::new(key, value);
-                None
-            }
-            Some(ref mut inner) => match inner.key.cmp(&key) {
-                Ordering::Greater => inner.left.insert(key, value),
-                Ordering::Equal => Some(::std::mem::replace(&mut inner.value, value)),
-                Ordering::Less => inner.right.insert(key, value),
-            },
+    fn insert(&mut self, key: K, value: V) -> Option<V> {
+        match self.key.cmp(&key) {
+            Ordering::Greater => self.left.insert(key, value),
+            Ordering::Equal => Some(mem::replace(&mut self.value, value)),
+            Ordering::Less => self.right.insert(key, value),
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
-        match self.inner {
-            None => None,
-            Some(ref inner) => match inner.key.cmp(key) {
-                Ordering::Greater => inner.left.get(key),
-                Ordering::Equal => Some(&inner.value),
-                Ordering::Less => inner.right.get(key),
-            },
+    fn get(&self, key: &K) -> Option<&V> {
+        match self.key.cmp(key) {
+            Ordering::Greater => self.left.get(key),
+            Ordering::Equal => Some(&self.value),
+            Ordering::Less => self.right.get(key),
         }
     }
 
-    pub fn len(&self) -> usize {
-        match self.inner {
-            None => 0,
-            Some(ref inner) => inner.left.len() + 1 + inner.right.len(),
-        }
+    fn len(&self) -> usize {
+        self.left.len() + 1 + self.right.len()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{InnerNode, Node};
+    use super::{Node, Tree};
 
     #[test]
-    fn node_eq_pass() {
-        let node_a: Node<String, String> = Node::new("cat".into(), "meow".into());
-        let node_b: Node<String, String> = Node::new("cat".into(), "meow".into());
-        assert_eq!(node_a, node_b);
+    fn tree_eq_pass() {
+        let tree_a = Tree::with(String::from("cat"), String::from("meow"));
+        let tree_b = Tree::with(String::from("cat"), String::from("meow"));
+        assert_eq!(tree_a, tree_b);
     }
 
     #[test]
     #[should_panic]
-    fn node_eq_fail() {
-        let node_a: Node<String, String> = Node::new("cat".into(), "meow".into());
-        let node_b: Node<String, String> = Node::new("dog".into(), "bark".into());
-        assert_eq!(node_a, node_b);
+    fn tree_eq_fail() {
+        let tree_a = Tree::with(String::from("cat"), String::from("meow"));
+        let tree_b = Tree::with(String::from("dog"), String::from("bark"));
+        assert_eq!(tree_a, tree_b);
     }
 
     #[test]
-    fn node_neq_pass() {
-        let node_a: Node<String, String> = Node::new("cat".into(), "meow".into());
-        let node_b: Node<String, String> = Node::new("dog".into(), "bark".into());
-        assert_ne!(node_a, node_b);
+    fn tree_neq_pass() {
+        let tree_a = Tree::with(String::from("cat"), String::from("meow"));
+        let tree_b = Tree::with(String::from("dog"), String::from("bark"));
+        assert_ne!(tree_a, tree_b);
     }
 
     #[test]
     #[should_panic]
-    fn node_neq_fail() {
-        let node_a: Node<String, String> = Node::new("cat".into(), "meow".into());
-        let node_b: Node<String, String> = Node::new("cat".into(), "meow".into());
-        assert_ne!(node_a, node_b);
+    fn tree_neq_fail() {
+        let tree_a = Tree::with(String::from("cat"), String::from("meow"));
+        let tree_b = Tree::with(String::from("cat"), String::from("meow"));
+        assert_ne!(tree_a, tree_b);
     }
 
     #[test]
-    fn node_insert_pass() {
-        let mut node_root = Node::new(1, 'b');
-        node_root.insert(0, 'a');
-        node_root.insert(2, 'c');
-
-        let node_root_1 = Node {
-            inner: Some(Box::new(InnerNode {
-                left: Node::new(0, 'a'),
-                right: Node::new(2, 'c'),
-                key: 1,
-                value: 'b',
-            })),
-        };
-        assert_eq!(node_root, node_root_1);
-        assert_eq!(node_root.len(), 3);
+    fn tree_insert_pass() {
+        let mut tree_root = Tree::with(1, '1');
+        tree_root.insert(0, '0');
+        tree_root.insert(2, '2');
+        let tree_root_1 = Tree(Some(Box::new(Node {
+            key: 1,
+            value: '1',
+            left: Tree::with(0, '0'),
+            right: Tree::with(2, '2'),
+        })));
+        assert_eq!(tree_root, tree_root_1);
+        assert_eq!(tree_root.len(), 3);
     }
 
     #[test]
-    fn node_insert_duplicate_pass() {
-        let mut node_root = Node::new(0, 'a');
-        assert_eq!(node_root.insert(1, 'b'), None);
-        assert_eq!(node_root.insert(1, 'b'), Some('b'));
+    fn tree_insert_duplicate_pass() {
+        let mut tree_root = Tree::with(0, '0');
+        assert_eq!(tree_root.insert(1, '1'), None);
+        assert_eq!(tree_root.insert(1, '1'), Some('1'));
     }
 
     #[test]
-    fn node_test_get_pass() {
-        let mut node_root = Node::new(1, 'b');
-        node_root.insert(0, 'a');
-        node_root.insert(2, 'c');
-        assert_eq!(node_root.get(&0), Some(&'a'));
-        assert_eq!(node_root.get(&1), Some(&'b'));
-        assert_eq!(node_root.get(&2), Some(&'c'));
+    fn tree_test_get_pass() {
+        let mut tree_root = Tree::with(1, '1');
+        tree_root.insert(0, '0');
+        tree_root.insert(2, '2');
+        assert_eq!(tree_root.get(&0), Some(&'0'));
+        assert_eq!(tree_root.get(&1), Some(&'1'));
+        assert_eq!(tree_root.get(&2), Some(&'2'));
     }
 }
