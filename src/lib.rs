@@ -55,9 +55,9 @@ struct Node<K, V> {
     /// This node's value
     value: V,
     /// Left child
-    left: Tree<K, V>,
+    left: Option<Box<Node<K, V>>>,
     /// Right child
-    right: Tree<K, V>,
+    right: Option<Box<Node<K, V>>>,
 }
 
 impl<K: Ord, V> Node<K, V> {
@@ -65,29 +65,44 @@ impl<K: Ord, V> Node<K, V> {
         Node {
             key: k,
             value: v,
-            left: Tree::default(),
-            right: Tree::default(),
+            left: None,
+            right: None,
         }
     }
 
     fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.key.cmp(&key) {
-            Ordering::Greater => self.left.insert(key, value),
-            Ordering::Equal => Some(mem::replace(&mut self.value, value)),
-            Ordering::Less => self.right.insert(key, value),
+        let lr = match self.key.cmp(&key) {
+            Ordering::Greater => &mut self.left,
+            Ordering::Equal => {
+                return Some(mem::replace(&mut self.value, value));
+            }
+            Ordering::Less => &mut self.right,
+        };
+        match lr {
+            None => {
+                *lr = Some(Box::new(Node::new(key, value)));
+                None
+            }
+            Some(node) => node.as_mut().insert(key, value),
         }
     }
 
     fn get(&self, key: &K) -> Option<&V> {
-        match self.key.cmp(key) {
-            Ordering::Greater => self.left.get(key),
-            Ordering::Equal => Some(&self.value),
-            Ordering::Less => self.right.get(key),
+        let lr = match self.key.cmp(key) {
+            Ordering::Greater => &self.left,
+            Ordering::Equal => return Some(&self.value),
+            Ordering::Less => &self.right,
+        };
+        match lr {
+            None => None,
+            Some(node) => node.as_ref().get(key),
         }
     }
 
     fn len(&self) -> usize {
-        self.left.len() + 1 + self.right.len()
+        self.left.as_ref().map_or(0, |node| node.len())
+            + 1
+            + self.right.as_ref().map_or(0, |node| node.len())
     }
 }
 
@@ -133,8 +148,8 @@ mod tests {
         let tree_root_1 = Tree(Some(Box::new(Node {
             key: 1,
             value: '1',
-            left: Tree::with(0, '0'),
-            right: Tree::with(2, '2'),
+            left: Some(Box::new(Node::new(0, '0'))),
+            right: Some(Box::new(Node::new(2, '2'))),
         })));
         assert_eq!(tree_root, tree_root_1);
         assert_eq!(tree_root.len(), 3);
