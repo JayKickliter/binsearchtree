@@ -106,9 +106,69 @@ impl<K: Ord, V> Node<K, V> {
     }
 }
 
+fn left<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
+    match root {
+        None => None,
+        Some(box_root) => box_root.left.as_ref().map(|box_node| box_node.as_ref()),
+    }
+}
+
+fn right<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
+    match root {
+        None => None,
+        Some(box_root) => box_root.right.as_ref().map(|box_node| box_node.as_ref()),
+    }
+}
+
+fn left_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
+    match root {
+        None => None,
+        Some(box_root) => box_root.left.as_mut().map(|box_node| box_node.as_mut()),
+    }
+}
+
+fn len<K: Ord, V>(root: &Option<Box<Node<K, V>>>) -> Option<usize> {
+    root.as_ref().map(|node| node.len())
+}
+
+fn right_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
+    match root {
+        None => None,
+        Some(box_root) => box_root.right.as_mut().map(|box_node| box_node.as_mut()),
+    }
+}
+
+fn rotate_right<K, V>(root: &mut Option<Box<Node<K, V>>>) {
+    let new_root = if let Some(mut new_right) = root.take() {
+        if let Some(mut new_root) = new_right.left.take() {
+            new_root.right = Some(new_right);
+            new_root
+        } else {
+            new_right
+        }
+    } else {
+        return;
+    };
+    *root = Some(new_root);
+}
+
+fn rotate_left<K: ::std::fmt::Debug, V: ::std::fmt::Debug>(root: &mut Option<Box<Node<K, V>>>) {
+    let new_root = if let Some(mut new_left) = root.take() {
+        if let Some(mut new_root) = new_left.right.take() {
+            new_root.left = Some(new_left);
+            new_root
+        } else {
+            new_left
+        }
+    } else {
+        return;
+    };
+    *root = Some(new_root);
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Node, Tree};
+    use super::*;
 
     #[test]
     fn tree_eq_pass() {
@@ -170,5 +230,31 @@ mod tests {
         assert_eq!(tree_root.get(&0), Some(&'0'));
         assert_eq!(tree_root.get(&1), Some(&'1'));
         assert_eq!(tree_root.get(&2), Some(&'2'));
+    }
+
+    #[test]
+    fn node_rotate_right_pass() {
+        let mut node_root = Node::new(1, '1');
+        node_root.insert(0, '0');
+        node_root.insert(2, '2');
+        assert_eq!(node_root.left.as_ref().map_or(0, |node| node.len()), 1);
+        assert_eq!(node_root.right.as_ref().map_or(0, |node| node.len()), 1);
+        let mut node_root = Some(Box::new(node_root));
+        rotate_right(&mut node_root);
+        assert_eq!(left(&node_root).map(|node| node.len()), None);
+        assert_eq!(right(&node_root).map(|node| node.len()), Some(2));
+    }
+
+    #[test]
+    fn node_rotate_left_pass() {
+        let mut node_root = Node::new(1, '1');
+        node_root.insert(0, '0');
+        node_root.insert(2, '2');
+        assert_eq!(node_root.right.as_ref().map_or(0, |node| node.len()), 1);
+        assert_eq!(node_root.left.as_ref().map_or(0, |node| node.len()), 1);
+        let mut node_root = Some(Box::new(node_root));
+        rotate_left(&mut node_root);
+        assert_eq!(right(&node_root).map(|node| node.len()), None);
+        assert_eq!(left(&node_root).map(|node| node.len()), Some(2));
     }
 }
