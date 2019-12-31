@@ -14,24 +14,24 @@ impl<K: Ord, V> Tree<K, V> {
         Self::default()
     }
 
-    pub fn with(key: K, value: V) -> Self {
+    pub fn with(k: K, v: V) -> Self {
         let mut tree = Self::new();
-        tree.insert(key, value);
+        tree.insert(k, v);
         tree
     }
 
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+    pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         match &mut self.0 {
             inner @ None => {
-                let _ = mem::replace(inner, Some(Box::new(Node::new(key, value))));
+                let _ = mem::replace(inner, Some(Box::new(Node::new(k, v))));
                 None
             }
-            Some(node) => node.as_mut().insert(key, value),
+            Some(node) => node.as_mut().insert(k, v),
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.0.as_ref().and_then(|node| node.get(key))
+    pub fn get(&self, k: &K) -> Option<&V> {
+        self.0.as_ref().and_then(|node| node.get(k))
     }
 
     pub fn len(&self) -> usize {
@@ -46,80 +46,80 @@ impl<K: Ord, V> Tree<K, V> {
 /// A node in a binary search tree
 #[derive(Debug, PartialEq, Clone)]
 struct Node<K, V> {
-    /// This node's key
-    key: K,
-    /// This node's value
-    value: V,
-    /// Left child
-    left: Option<Box<Node<K, V>>>,
-    /// Right child
-    right: Option<Box<Node<K, V>>>,
+    /// This node's k
+    k: K,
+    /// This node's v
+    v: V,
+    /// L child
+    l: Option<Box<Self>>,
+    /// R child
+    r: Option<Box<Self>>,
 }
 
 impl<K: Ord, V> Node<K, V> {
     fn new(k: K, v: V) -> Self {
         Self {
-            key: k,
-            value: v,
-            left: None,
-            right: None,
+            k,
+            v,
+            l: None,
+            r: None,
         }
     }
 
-    fn insert(&mut self, key: K, value: V) -> Option<V> {
-        let lr = match self.key.cmp(&key) {
-            Ordering::Greater => &mut self.left,
+    fn insert(&mut self, k: K, v: V) -> Option<V> {
+        let lr = match self.k.cmp(&k) {
+            Ordering::Greater => &mut self.l,
             Ordering::Equal => {
-                return Some(mem::replace(&mut self.value, value));
+                return Some(mem::replace(&mut self.v, v));
             }
-            Ordering::Less => &mut self.right,
+            Ordering::Less => &mut self.r,
         };
         match lr {
             None => {
-                *lr = Some(Box::new(Self::new(key, value)));
+                *lr = Some(Box::new(Self::new(k, v)));
                 None
             }
-            Some(node) => node.as_mut().insert(key, value),
+            Some(node) => node.as_mut().insert(k, v),
         }
     }
 
-    fn get(&self, key: &K) -> Option<&V> {
-        let lr = match self.key.cmp(key) {
-            Ordering::Greater => &self.left,
-            Ordering::Equal => return Some(&self.value),
-            Ordering::Less => &self.right,
+    fn get(&self, k: &K) -> Option<&V> {
+        let lr = match self.k.cmp(k) {
+            Ordering::Greater => &self.l,
+            Ordering::Equal => return Some(&self.v),
+            Ordering::Less => &self.r,
         };
         match lr {
             None => None,
-            Some(node) => node.as_ref().get(key),
+            Some(node) => node.as_ref().get(k),
         }
     }
 
     fn len(&self) -> usize {
-        self.left.as_ref().map_or(0, |node| node.len())
+        self.l.as_ref().map_or(0, |node| node.len())
             + 1
-            + self.right.as_ref().map_or(0, |node| node.len())
+            + self.r.as_ref().map_or(0, |node| node.len())
     }
 }
 
-fn left<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
+fn l<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.left.as_ref().map(|box_node| box_node.as_ref()),
+        Some(box_root) => box_root.l.as_ref().map(|box_node| box_node.as_ref()),
     }
 }
 
-fn right<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
+fn r<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.right.as_ref().map(|box_node| box_node.as_ref()),
+        Some(box_root) => box_root.r.as_ref().map(|box_node| box_node.as_ref()),
     }
 }
 
-fn left_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
+fn l_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.left.as_mut().map(|box_node| box_node.as_mut()),
+        Some(box_root) => box_root.l.as_mut().map(|box_node| box_node.as_mut()),
     }
 }
 
@@ -127,20 +127,20 @@ fn len<K: Ord, V>(root: &Option<Box<Node<K, V>>>) -> Option<usize> {
     root.as_ref().map(|node| node.len())
 }
 
-fn right_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
+fn r_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.right.as_mut().map(|box_node| box_node.as_mut()),
+        Some(box_root) => box_root.r.as_mut().map(|box_node| box_node.as_mut()),
     }
 }
 
-fn rotate_right<K, V>(root: &mut Option<Box<Node<K, V>>>) {
-    let new_root = if let Some(mut new_right) = root.take() {
-        if let Some(mut new_root) = new_right.left.take() {
-            new_root.right = Some(new_right);
+fn rotate_r<K, V>(root: &mut Option<Box<Node<K, V>>>) {
+    let new_root = if let Some(mut new_r) = root.take() {
+        if let Some(mut new_root) = new_r.l.take() {
+            new_root.r = Some(new_r);
             new_root
         } else {
-            new_right
+            new_r
         }
     } else {
         return;
@@ -148,13 +148,13 @@ fn rotate_right<K, V>(root: &mut Option<Box<Node<K, V>>>) {
     *root = Some(new_root);
 }
 
-fn rotate_left<K: ::std::fmt::Debug, V: ::std::fmt::Debug>(root: &mut Option<Box<Node<K, V>>>) {
-    let new_root = if let Some(mut new_left) = root.take() {
-        if let Some(mut new_root) = new_left.right.take() {
-            new_root.left = Some(new_left);
+fn rotate_l<K: ::std::fmt::Debug, V: ::std::fmt::Debug>(root: &mut Option<Box<Node<K, V>>>) {
+    let new_root = if let Some(mut new_l) = root.take() {
+        if let Some(mut new_root) = new_l.r.take() {
+            new_root.l = Some(new_l);
             new_root
         } else {
-            new_left
+            new_l
         }
     } else {
         return;
@@ -202,10 +202,10 @@ mod tests {
         tree_root.insert(0, '0');
         tree_root.insert(2, '2');
         let tree_root_1 = Tree(Some(Box::new(Node {
-            key: 1,
-            value: '1',
-            left: Some(Box::new(Node::new(0, '0'))),
-            right: Some(Box::new(Node::new(2, '2'))),
+            k: 1,
+            v: '1',
+            l: Some(Box::new(Node::new(0, '0'))),
+            r: Some(Box::new(Node::new(2, '2'))),
         })));
         assert_eq!(tree_root, tree_root_1);
         assert_eq!(tree_root.len(), 3);
@@ -229,28 +229,28 @@ mod tests {
     }
 
     #[test]
-    fn node_rotate_right_pass() {
+    fn node_rotate_r_pass() {
         let mut node_root = Node::new(1, '1');
         node_root.insert(0, '0');
         node_root.insert(2, '2');
-        assert_eq!(node_root.left.as_ref().map_or(0, |node| node.len()), 1);
-        assert_eq!(node_root.right.as_ref().map_or(0, |node| node.len()), 1);
+        assert_eq!(node_root.l.as_ref().map_or(0, |node| node.len()), 1);
+        assert_eq!(node_root.r.as_ref().map_or(0, |node| node.len()), 1);
         let mut node_root = Some(Box::new(node_root));
-        rotate_right(&mut node_root);
-        assert_eq!(left(&node_root).map(|node| node.len()), None);
-        assert_eq!(right(&node_root).map(|node| node.len()), Some(2));
+        rotate_r(&mut node_root);
+        assert_eq!(l(&node_root).map(|node| node.len()), None);
+        assert_eq!(r(&node_root).map(|node| node.len()), Some(2));
     }
 
     #[test]
-    fn node_rotate_left_pass() {
+    fn node_rotate_l_pass() {
         let mut node_root = Node::new(1, '1');
         node_root.insert(0, '0');
         node_root.insert(2, '2');
-        assert_eq!(node_root.right.as_ref().map_or(0, |node| node.len()), 1);
-        assert_eq!(node_root.left.as_ref().map_or(0, |node| node.len()), 1);
+        assert_eq!(node_root.r.as_ref().map_or(0, |node| node.len()), 1);
+        assert_eq!(node_root.l.as_ref().map_or(0, |node| node.len()), 1);
         let mut node_root = Some(Box::new(node_root));
-        rotate_left(&mut node_root);
-        assert_eq!(right(&node_root).map(|node| node.len()), None);
-        assert_eq!(left(&node_root).map(|node| node.len()), Some(2));
+        rotate_l(&mut node_root);
+        assert_eq!(r(&node_root).map(|node| node.len()), None);
+        assert_eq!(l(&node_root).map(|node| node.len()), Some(2));
     }
 }
