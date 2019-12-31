@@ -1,22 +1,20 @@
-use std::cmp::Ordering;
-use std::default::Default;
-use std::mem;
+use std::{cmp::Ordering, default::Default, mem};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Tree<K, V>(Option<Box<Node<K, V>>>);
 
 impl<K, V> Default for Tree<K, V> {
     fn default() -> Self {
-        Tree(None)
+        Self(None)
     }
 }
 
 impl<K: Ord, V> Tree<K, V> {
-    pub fn new() -> Tree<K, V> {
-        Tree::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn with(key: K, value: V) -> Tree<K, V> {
+    pub fn with(key: K, value: V) -> Self {
         let mut tree = Self::new();
         tree.insert(key, value);
         tree
@@ -45,8 +43,6 @@ impl<K: Ord, V> Tree<K, V> {
     }
 }
 
-pub trait KV: Sized + PartialEq {}
-
 /// A node in a binary search tree
 #[derive(Debug, PartialEq, Clone)]
 struct Node<K, V> {
@@ -61,8 +57,8 @@ struct Node<K, V> {
 }
 
 impl<K: Ord, V> Node<K, V> {
-    fn new(k: K, v: V) -> Node<K, V> {
-        Node {
+    fn new(k: K, v: V) -> Self {
+        Self {
             key: k,
             value: v,
             left: None,
@@ -80,7 +76,7 @@ impl<K: Ord, V> Node<K, V> {
         };
         match lr {
             None => {
-                *lr = Some(Box::new(Node::new(key, value)));
+                *lr = Some(Box::new(Self::new(key, value)));
                 None
             }
             Some(node) => node.as_mut().insert(key, value),
