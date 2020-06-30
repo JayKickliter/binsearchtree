@@ -1,3 +1,5 @@
+#![cfg_attr(debug_assertions, allow(dead_code))]
+
 use std::{cmp::Ordering, default::Default, mem};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -45,7 +47,7 @@ impl<K: Ord, V> Tree<K, V> {
 
 /// A node in a binary search tree
 #[derive(Debug, PartialEq, Clone)]
-struct Node<K, V> {
+pub(crate) struct Node<K, V> {
     /// This node's k
     k: K,
     /// This node's v
@@ -57,7 +59,7 @@ struct Node<K, V> {
 }
 
 impl<K: Ord, V> Node<K, V> {
-    fn new(k: K, v: V) -> Self {
+    pub(crate) fn new(k: K, v: V) -> Self {
         Self {
             k,
             v,
@@ -66,7 +68,7 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    fn insert(&mut self, k: K, v: V) -> Option<V> {
+    pub(crate) fn insert(&mut self, k: K, v: V) -> Option<V> {
         let lr = match self.k.cmp(&k) {
             Ordering::Greater => &mut self.l,
             Ordering::Equal => {
@@ -83,7 +85,7 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    fn get(&self, k: &K) -> Option<&V> {
+    pub(crate) fn get(&self, k: &K) -> Option<&V> {
         let lr = match self.k.cmp(k) {
             Ordering::Greater => &self.l,
             Ordering::Equal => return Some(&self.v),
@@ -95,46 +97,41 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.l.as_ref().map_or(0, |node| node.len())
             + 1
             + self.r.as_ref().map_or(0, |node| node.len())
     }
 }
 
-fn l<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
+pub(crate) fn l<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
     match root {
         None => None,
         Some(box_root) => box_root.l.as_ref().map(|box_node| box_node.as_ref()),
     }
 }
-
-fn r<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
+pub(crate) fn r<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
     match root {
         None => None,
         Some(box_root) => box_root.r.as_ref().map(|box_node| box_node.as_ref()),
     }
 }
-
-fn l_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
+pub(crate) fn l_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
     match root {
         None => None,
         Some(box_root) => box_root.l.as_mut().map(|box_node| box_node.as_mut()),
     }
 }
-
-fn len<K: Ord, V>(root: &Option<Box<Node<K, V>>>) -> Option<usize> {
+pub(crate) fn len<K: Ord, V>(root: &Option<Box<Node<K, V>>>) -> Option<usize> {
     root.as_ref().map(|node| node.len())
 }
-
-fn r_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
+pub(crate) fn r_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
     match root {
         None => None,
         Some(box_root) => box_root.r.as_mut().map(|box_node| box_node.as_mut()),
     }
 }
-
-fn rotate_r<K, V>(root: &mut Option<Box<Node<K, V>>>) {
+pub(crate) fn rotate_r<K, V>(root: &mut Option<Box<Node<K, V>>>) {
     let new_root = if let Some(mut new_r) = root.take() {
         if let Some(mut new_root) = new_r.l.take() {
             new_root.r = Some(new_r);
@@ -148,7 +145,7 @@ fn rotate_r<K, V>(root: &mut Option<Box<Node<K, V>>>) {
     *root = Some(new_root);
 }
 
-fn rotate_l<K: ::std::fmt::Debug, V: ::std::fmt::Debug>(root: &mut Option<Box<Node<K, V>>>) {
+fn rotate_l<K, V>(root: &mut Option<Box<Node<K, V>>>) {
     let new_root = if let Some(mut new_l) = root.take() {
         if let Some(mut new_root) = new_l.r.take() {
             new_root.l = Some(new_l);
