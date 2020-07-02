@@ -11,18 +11,24 @@ impl<K, V> Default for Tree<K, V> {
     }
 }
 
-impl<K: Ord, V> Tree<K, V> {
+impl<K, V> Tree<K, V> {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn with(k: K, v: V) -> Self {
+    pub fn with(k: K, v: V) -> Self
+    where
+        K: Ord,
+    {
         let mut tree = Self::new();
         tree.insert(k, v);
         tree
     }
 
-    pub fn insert(&mut self, k: K, v: V) -> Option<V> {
+    pub fn insert(&mut self, k: K, v: V) -> Option<V>
+    where
+        K: Ord,
+    {
         match &mut self.0 {
             inner @ None => {
                 let _ = mem::replace(inner, Some(Box::new(Node::new(k, v))));
@@ -32,11 +38,17 @@ impl<K: Ord, V> Tree<K, V> {
         }
     }
 
-    pub fn get(&self, k: &K) -> Option<&V> {
+    pub fn get(&self, k: &K) -> Option<&V>
+    where
+        K: Ord,
+    {
         self.0.as_ref().and_then(|node| node.get(k))
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> usize
+    where
+        K: Ord,
+    {
         self.0.as_ref().map_or(0, |node| node.len())
     }
 
@@ -194,6 +206,55 @@ fn rotate_l<K, V>(root: &mut Option<Box<Node<K, V>>>) {
     *root = Some(new_root);
 }
 
+impl<'a, K, V> dot::Labeller<'a, (K, V), (K, K)> for Tree<K, V>
+where
+    K: ::std::fmt::Display + Copy,
+    V: ::std::fmt::Display + Copy,
+{
+    fn graph_id(&'a self) -> dot::Id<'a> {
+        dot::Id::new("Tree").unwrap()
+    }
+
+    fn node_id(&'a self, n: &(K, V)) -> dot::Id<'a> {
+        dot::Id::new(format!("k_{}", n.0)).unwrap()
+    }
+
+    fn node_label(&'a self, n: &(K, V)) -> dot::LabelText<'a> {
+        dot::LabelText::LabelStr(::std::borrow::Cow::Owned(format!("{}", n.0)))
+    }
+}
+
+impl<'a, K, V> dot::GraphWalk<'a, (K, V), (K, K)> for Tree<K, V>
+where
+    K: ::std::fmt::Display + Copy + Ord,
+    V: ::std::fmt::Display + Copy,
+{
+    fn nodes(&'a self) -> dot::Nodes<'a, (K, V)> {
+        ::std::borrow::Cow::Owned(self.iter().map(|&Node { k, v, .. }| (k, v)).collect())
+    }
+
+    fn edges(&'a self) -> dot::Edges<'a, (K, K)> {
+        let mut edges: Vec<(K, K)> = Vec::new();
+        for Node { k, l, r, .. } in self.iter() {
+            if let Some(l) = l.as_deref() {
+                edges.push((*k, l.k));
+            }
+            if let Some(r) = r.as_deref() {
+                edges.push((*k, r.k));
+            }
+        }
+        ::std::borrow::Cow::Owned(edges)
+    }
+
+    fn source(&'a self, e: &(K, K)) -> (K, V) {
+        (e.0, *self.get(&e.0).unwrap())
+    }
+
+    fn target(&'a self, e: &(K, K)) -> (K, V) {
+        (e.1, *self.get(&e.1).unwrap())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,5 +359,16 @@ mod tests {
         rotate_l(&mut node_root);
         assert_eq!(r(&node_root).map(|node| node.len()), None);
         assert_eq!(l(&node_root).map(|node| node.len()), Some(2));
+    }
+
+    #[test]
+    fn tree_can_render_graphviz() {
+        let mut tree: Tree<u8, u8> = Tree::new();
+        for _ in 0..32 {
+            tree.insert(rand::random(), rand::random());
+        }
+        let mut out = Vec::new();
+        dot::render(&tree, &mut out).unwrap();
+        print!("{}", std::str::from_utf8(&out).unwrap());
     }
 }
