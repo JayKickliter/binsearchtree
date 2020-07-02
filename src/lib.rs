@@ -43,11 +43,15 @@ impl<K: Ord, V> Tree<K, V> {
     pub fn is_empty(&self) -> bool {
         self.0.is_none()
     }
+
+    pub fn iter(&self) -> TreeIter<K, V> {
+        TreeIter::new(self)
+    }
 }
 
 /// A node in a binary search tree
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct Node<K, V> {
+pub struct Node<K, V> {
     /// This node's k
     k: K,
     /// This node's v
@@ -101,6 +105,37 @@ impl<K: Ord, V> Node<K, V> {
         self.l.as_ref().map_or(0, |node| node.len())
             + 1
             + self.r.as_ref().map_or(0, |node| node.len())
+    }
+}
+
+pub struct TreeIter<'a, K, V> {
+    curr: Option<&'a Node<K, V>>,
+    stack: Vec<&'a Node<K, V>>,
+}
+
+impl<'a, K, V> TreeIter<'a, K, V> {
+    pub fn new(tree: &'a Tree<K, V>) -> Self {
+        Self {
+            curr: tree.0.as_deref(),
+            stack: Vec::new(),
+        }
+    }
+}
+
+impl<'a, K, V> Iterator for TreeIter<'a, K, V> {
+    type Item = &'a Node<K, V>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(curr) = self.curr {
+            self.stack.push(curr);
+            self.curr = curr.l.as_deref();
+        }
+        if let Some(it) = self.stack.pop() {
+            self.curr = it.r.as_deref();
+            Some(it)
+        } else {
+            None
+        }
     }
 }
 
@@ -223,6 +258,20 @@ mod tests {
         assert_eq!(tree_root.get(&0), Some(&'0'));
         assert_eq!(tree_root.get(&1), Some(&'1'));
         assert_eq!(tree_root.get(&2), Some(&'2'));
+    }
+
+    #[test]
+    fn tree_test_iter_pass() {
+        let mut tree: Tree<u8, ()> = Tree::new();
+        for _ in 0..100 {
+            tree.insert(rand::random(), ());
+        }
+        let mut iter = tree.iter();
+        let mut last = iter.next().unwrap().k;
+        for &Node { k, .. } in iter {
+            assert!(k > last);
+            last = k;
+        }
     }
 
     #[test]
