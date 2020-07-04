@@ -179,31 +179,47 @@ pub(crate) fn r_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Nod
     }
 }
 pub(crate) fn rotate_r<K, V>(root: &mut Option<Box<Node<K, V>>>) {
-    let new_root = if let Some(mut new_r) = root.take() {
-        if let Some(mut new_root) = new_r.l.take() {
-            new_root.r = Some(new_r);
-            new_root
-        } else {
-            new_r
+    *root = match root.take() {
+        None => {
+            // Cannot rotate an empty tree
+            return;
         }
-    } else {
-        return;
+        Some(mut root) => {
+            match root.l.take() {
+                None => {
+                    // Cannot right rorate if `root` doesn't have left child
+                    Some(root)
+                }
+                Some(mut pivot) => {
+                    root.l = pivot.r.take();
+                    pivot.r = Some(root);
+                    Some(pivot)
+                }
+            }
+        }
     };
-    *root = Some(new_root);
 }
 
-fn rotate_l<K, V>(root: &mut Option<Box<Node<K, V>>>) {
-    let new_root = if let Some(mut new_l) = root.take() {
-        if let Some(mut new_root) = new_l.r.take() {
-            new_root.l = Some(new_l);
-            new_root
-        } else {
-            new_l
+pub(crate) fn rotate_l<K, V>(root: &mut Option<Box<Node<K, V>>>) {
+    *root = match root.take() {
+        None => {
+            // Cannot rotate an empty tree
+            return;
         }
-    } else {
-        return;
+        Some(mut root) => {
+            match root.r.take() {
+                None => {
+                    // Cannot left rorate if `root` doesn't have right child
+                    Some(root)
+                }
+                Some(mut pivot) => {
+                    root.r = pivot.l.take();
+                    pivot.l = Some(root);
+                    Some(pivot)
+                }
+            }
+        }
     };
-    *root = Some(new_root);
 }
 
 impl<'a, K, V> dot::Labeller<'a, (K, V), (K, K)> for Tree<K, V>
@@ -337,28 +353,54 @@ mod tests {
 
     #[test]
     fn node_rotate_r_pass() {
-        let mut node_root = Node::new(1, '1');
-        node_root.insert(0, '0');
-        node_root.insert(2, '2');
-        assert_eq!(node_root.l.as_ref().map_or(0, |node| node.len()), 1);
-        assert_eq!(node_root.r.as_ref().map_or(0, |node| node.len()), 1);
-        let mut node_root = Some(Box::new(node_root));
-        rotate_r(&mut node_root);
-        assert_eq!(l(&node_root).map(|node| node.len()), None);
-        assert_eq!(r(&node_root).map(|node| node.len()), Some(2));
+        let mut tree = Tree::with(5, 5);
+        tree.insert(7, 7);
+        tree.insert(3, 3);
+        tree.insert(2, 2);
+        tree.insert(4, 4);
+        let mut out = Vec::new();
+        dot::render(&tree, &mut out).unwrap();
+        rotate_r(&mut tree.0);
+        dot::render(&tree, &mut out).unwrap();
+        print!("{}", std::str::from_utf8(&out).unwrap());
     }
 
     #[test]
     fn node_rotate_l_pass() {
-        let mut node_root = Node::new(1, '1');
-        node_root.insert(0, '0');
-        node_root.insert(2, '2');
-        assert_eq!(node_root.r.as_ref().map_or(0, |node| node.len()), 1);
-        assert_eq!(node_root.l.as_ref().map_or(0, |node| node.len()), 1);
-        let mut node_root = Some(Box::new(node_root));
-        rotate_l(&mut node_root);
-        assert_eq!(r(&node_root).map(|node| node.len()), None);
-        assert_eq!(l(&node_root).map(|node| node.len()), Some(2));
+        let mut tree = Tree::with(3, 3);
+        tree.insert(2, 2);
+        tree.insert(5, 5);
+        tree.insert(4, 4);
+        tree.insert(7, 7);
+        let mut out = Vec::new();
+        dot::render(&tree, &mut out).unwrap();
+        rotate_l(&mut tree.0);
+        dot::render(&tree, &mut out).unwrap();
+        print!("{}", std::str::from_utf8(&out).unwrap());
+    }
+
+    #[test]
+    fn node_rotate_roundtrip_pass() {
+        let mut tree = Tree::with(3, 3);
+        tree.insert(2, 2);
+        tree.insert(5, 5);
+        tree.insert(4, 4);
+        tree.insert(7, 7);
+        let tree_0 = tree.clone();
+        rotate_l(&mut tree.0);
+        let tree_1 = tree.clone();
+        rotate_r(&mut tree.0);
+        let tree_2 = tree;
+
+        assert_ne!(tree_0, tree_1);
+        assert_ne!(tree_1, tree_2);
+        assert_eq!(tree_0, tree_2);
+
+        let mut out = Vec::new();
+        dot::render(&tree_0, &mut out).unwrap();
+        dot::render(&tree_1, &mut out).unwrap();
+        dot::render(&tree_2, &mut out).unwrap();
+        print!("{}", std::str::from_utf8(&out).unwrap());
     }
 
     #[test]
