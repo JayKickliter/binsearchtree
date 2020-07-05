@@ -1,6 +1,6 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-use std::{cmp::Ordering, default::Default, mem};
+use core::{borrow::Borrow, cmp::Ordering, default::Default, mem};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Tree<K, V>(Option<Box<Node<K, V>>>);
@@ -12,10 +12,29 @@ impl<K, V> Default for Tree<K, V> {
 }
 
 impl<K, V> Tree<K, V> {
+    /// Creates an empty `Tree`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::Tree;
+    ///
+    /// let mut tree: Tree<String, i32> = Tree::new();
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Creates a `Tree` with an initial key-value pair.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::Tree;
+    ///
+    /// let tree = Tree::with("dog", "woof");
+    /// assert_eq!(tree.get("dog"), Some(&"woof"));
+    /// ```
     pub fn with(k: K, v: V) -> Self
     where
         K: Ord,
@@ -25,6 +44,21 @@ impl<K, V> Tree<K, V> {
         tree
     }
 
+    /// Inserted a new  key-value pair into the tree.
+    ///
+    /// If the tree already has an entry for `k`, the entry is updated
+    /// with the new `v` and returns `Some(old_v)`. Otherwise, returns
+    /// `None`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::Tree;
+    ///
+    /// let mut tree = Tree::new();
+    /// assert_eq!(tree.insert("cat", "meow"), None);
+    /// assert_eq!(tree.insert("cat", "meow"), Some("meow"));
+    /// ```
     pub fn insert(&mut self, k: K, v: V) -> Option<V>
     where
         K: Ord,
@@ -38,13 +72,36 @@ impl<K, V> Tree<K, V> {
         }
     }
 
-    pub fn get(&self, k: &K) -> Option<&V>
+    /// Returns a reference to the value for `k`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::Tree;
+    ///
+    /// let tree = Tree::with("cow", "moo");
+    /// assert_eq!(tree.get("cow"), Some(&"moo"));
+    /// ```
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
-        K: Ord,
+        K: Ord + Borrow<Q>,
+        Q: Ord,
     {
         self.0.as_ref().and_then(|node| node.get(k))
     }
-
+    /// Returns the number of key-value pairs in the Tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::Tree;
+    ///
+    /// let mut tree = Tree::new();
+    /// assert_eq!(tree.len(), 0);
+    /// tree.insert(1, 'a');
+    /// tree.insert(2, 'b');
+    /// assert_eq!(tree.len(), 2);
+    /// ```
     pub fn len(&self) -> usize
     where
         K: Ord,
@@ -52,10 +109,36 @@ impl<K, V> Tree<K, V> {
         self.0.as_ref().map_or(0, |node| node.len())
     }
 
+    /// Returns `true` if the tree is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::Tree;
+    ///
+    /// let mut tree = Tree::new();
+    /// assert_eq!(tree.is_empty(), true);
+    /// tree.insert(3, 'c');
+    /// assert_eq!(tree.is_empty(), false);
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.0.is_none()
     }
 
+    /// Returns an sorted-by-key iterator over the `Tree`.
+    // ///
+    // /// # Examples
+    // ///
+    // /// ```
+    // /// use binsearchtree::Tree;
+    // ///
+    // /// let mut tree = Tree::with(1_i32, 'a');
+    // /// tree.insert(2, 'b');
+    // /// tree.insert(3, 'c');
+    // /// tree.insert(4, 'd');
+    // ///
+    // /// // Collect values.
+    // /// let kvs: Vec<char> = tree.iter().collect();
     pub fn iter(&self) -> TreeIter<K, V> {
         TreeIter::new(self)
     }
@@ -101,8 +184,12 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    pub(crate) fn get(&self, k: &K) -> Option<&V> {
-        let lr = match self.k.cmp(k) {
+    pub(crate) fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Ord,
+    {
+        let lr = match self.k.borrow().cmp(k) {
             Ordering::Greater => &self.l,
             Ordering::Equal => return Some(&self.v),
             Ordering::Less => &self.r,
