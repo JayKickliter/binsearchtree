@@ -125,22 +125,27 @@ impl<K, V> Tree<K, V> {
         self.0.is_none()
     }
 
-    /// Returns an sorted-by-key iterator over the `Tree`.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use binsearchtree::Tree;
-    // ///
-    // /// let mut tree = Tree::with(1_i32, 'a');
-    // /// tree.insert(2, 'b');
-    // /// tree.insert(3, 'c');
-    // /// tree.insert(4, 'd');
-    // ///
-    // /// // Collect values.
-    // /// let kvs: Vec<char> = tree.iter().collect();
-    pub fn iter(&self) -> TreeIter<K, V> {
-        TreeIter::new(self)
+    /// Returns an sorted key-value iterator over the `Tree`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::Tree;
+    ///
+    /// let mut tree = Tree::with(3, 'a');
+    /// tree.insert(2, 'b');
+    /// tree.insert(1, 'c');
+    ///
+    /// // Collect key-value pairs.
+    /// let key_vals: Vec<(i32, char)> = tree.iter().map(|(&k, &v)| (k, v)).collect();
+    /// assert_eq!(key_vals, vec![(1, 'c'), (2, 'b'), (3, 'a')]);
+    /// ```
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter::new(self)
+    }
+
+    fn nodes(&self) -> NodeIter<K, V> {
+        NodeIter::new(self)
     }
 }
 
@@ -207,12 +212,28 @@ impl<K: Ord, V> Node<K, V> {
     }
 }
 
-pub struct TreeIter<'a, K, V> {
+pub struct Iter<'a, K, V>(NodeIter<'a, K, V>);
+
+impl<'a, K, V> Iter<'a, K, V> {
+    fn new(tree: &'a Tree<K, V>) -> Self {
+        Iter(NodeIter::new(tree))
+    }
+}
+
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|node| (&node.k, &node.v))
+    }
+}
+
+pub struct NodeIter<'a, K, V> {
     curr: Option<&'a Node<K, V>>,
     stack: Vec<&'a Node<K, V>>,
 }
 
-impl<'a, K, V> TreeIter<'a, K, V> {
+impl<'a, K, V> NodeIter<'a, K, V> {
     pub fn new(tree: &'a Tree<K, V>) -> Self {
         Self {
             curr: tree.0.as_deref(),
@@ -221,7 +242,7 @@ impl<'a, K, V> TreeIter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> Iterator for TreeIter<'a, K, V> {
+impl<'a, K, V> Iterator for NodeIter<'a, K, V> {
     type Item = &'a Node<K, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -333,12 +354,12 @@ where
     V: ::std::fmt::Display + Copy,
 {
     fn nodes(&'a self) -> dot::Nodes<'a, (K, V)> {
-        ::std::borrow::Cow::Owned(self.iter().map(|&Node { k, v, .. }| (k, v)).collect())
+        ::std::borrow::Cow::Owned(self.nodes().map(|&Node { k, v, .. }| (k, v)).collect())
     }
 
     fn edges(&'a self) -> dot::Edges<'a, (K, K)> {
         let mut edges: Vec<(K, K)> = Vec::new();
-        for Node { k, l, r, .. } in self.iter() {
+        for Node { k, l, r, .. } in self.nodes() {
             if let Some(l) = l.as_deref() {
                 edges.push((*k, l.k));
             }
@@ -431,8 +452,8 @@ mod tests {
             tree.insert(rand::random(), ());
         }
         let mut iter = tree.iter();
-        let mut last = iter.next().unwrap().k;
-        for &Node { k, .. } in iter {
+        let mut last = *iter.next().unwrap().0;
+        for (&k, _) in iter {
             assert!(k > last);
             last = k;
         }
