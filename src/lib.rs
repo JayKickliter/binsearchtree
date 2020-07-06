@@ -1,5 +1,11 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, vec::Vec};
 use core::{borrow::Borrow, cmp::Ordering, default::Default, mem};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -262,19 +268,19 @@ impl<'a, K, V> Iterator for NodeIter<'a, K, V> {
 pub(crate) fn l<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.l.as_ref().map(|box_node| box_node.as_ref()),
+        Some(box_root) => box_root.l.as_ref().map(AsRef::as_ref),
     }
 }
 pub(crate) fn r<K, V>(root: &Option<Box<Node<K, V>>>) -> Option<&Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.r.as_ref().map(|box_node| box_node.as_ref()),
+        Some(box_root) => box_root.r.as_ref().map(AsRef::as_ref),
     }
 }
 pub(crate) fn l_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.l.as_mut().map(|box_node| box_node.as_mut()),
+        Some(box_root) => box_root.l.as_mut().map(Box::as_mut),
     }
 }
 pub(crate) fn len<K: Ord, V>(root: &Option<Box<Node<K, V>>>) -> Option<usize> {
@@ -283,7 +289,7 @@ pub(crate) fn len<K: Ord, V>(root: &Option<Box<Node<K, V>>>) -> Option<usize> {
 pub(crate) fn r_mut<K, V>(root: &mut Option<Box<Node<K, V>>>) -> Option<&mut Node<K, V>> {
     match root {
         None => None,
-        Some(box_root) => box_root.r.as_mut().map(|box_node| box_node.as_mut()),
+        Some(box_root) => box_root.r.as_mut().map(Box::as_mut),
     }
 }
 pub(crate) fn rotate_r<K, V>(root: &mut Option<Box<Node<K, V>>>) {
@@ -330,6 +336,7 @@ pub(crate) fn rotate_l<K, V>(root: &mut Option<Box<Node<K, V>>>) {
     };
 }
 
+#[cfg(feature = "graphviz")]
 impl<'a, K, V> dot::Labeller<'a, (K, V), (K, K)> for Tree<K, V>
 where
     K: ::std::fmt::Display + Copy,
@@ -348,6 +355,7 @@ where
     }
 }
 
+#[cfg(feature = "graphviz")]
 impl<'a, K, V> dot::GraphWalk<'a, (K, V), (K, K)> for Tree<K, V>
 where
     K: ::std::fmt::Display + Copy + Ord,
@@ -382,6 +390,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::String;
 
     #[test]
     fn tree_eq_pass() {
@@ -466,11 +476,7 @@ mod tests {
         tree.insert(3, 3);
         tree.insert(2, 2);
         tree.insert(4, 4);
-        let mut out = Vec::new();
-        dot::render(&tree, &mut out).unwrap();
         rotate_r(&mut tree.0);
-        dot::render(&tree, &mut out).unwrap();
-        print!("{}", std::str::from_utf8(&out).unwrap());
     }
 
     #[test]
@@ -480,11 +486,7 @@ mod tests {
         tree.insert(5, 5);
         tree.insert(4, 4);
         tree.insert(7, 7);
-        let mut out = Vec::new();
-        dot::render(&tree, &mut out).unwrap();
         rotate_l(&mut tree.0);
-        dot::render(&tree, &mut out).unwrap();
-        print!("{}", std::str::from_utf8(&out).unwrap());
     }
 
     #[test]
@@ -503,22 +505,5 @@ mod tests {
         assert_ne!(tree_0, tree_1);
         assert_ne!(tree_1, tree_2);
         assert_eq!(tree_0, tree_2);
-
-        let mut out = Vec::new();
-        dot::render(&tree_0, &mut out).unwrap();
-        dot::render(&tree_1, &mut out).unwrap();
-        dot::render(&tree_2, &mut out).unwrap();
-        print!("{}", std::str::from_utf8(&out).unwrap());
-    }
-
-    #[test]
-    fn tree_can_render_graphviz() {
-        let mut tree: Tree<u8, u8> = Tree::new();
-        for _ in 0..32 {
-            tree.insert(rand::random(), rand::random());
-        }
-        let mut out = Vec::new();
-        dot::render(&tree, &mut out).unwrap();
-        print!("{}", std::str::from_utf8(&out).unwrap());
     }
 }
