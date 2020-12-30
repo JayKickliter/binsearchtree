@@ -14,3 +14,8 @@ dot = { optional = true, version = "0.1" }
 
 [dev-dependencies]
 rand = "0.7"
+
+
+[[bin]]
+name = "example"
+path = "example/example.rs"

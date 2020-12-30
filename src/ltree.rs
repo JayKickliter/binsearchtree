@@ -102,13 +102,13 @@ impl<K: Ord, V> LTree<K, V> {
                 let new_slot = self.new_slot();
                 self.node_slots[idx].as_mut().expect("invalid slot").l = Some(new_slot);
                 self.node_slots[new_slot] = Some(LNode::new(k, v));
-                return None;
+                None
             }
             (None, true) => {
                 let new_slot = self.new_slot();
                 self.node_slots[idx].as_mut().expect("invalid slot").r = Some(new_slot);
                 self.node_slots[new_slot] = Some(LNode::new(k, v));
-                return None;
+                None
             }
             (Some(child_slot), _) => self.insert_at_slot(child_slot, k, v),
         }
@@ -498,15 +498,15 @@ mod tests {
         assert_eq!(tree.insert(1, '1'), Some('1'));
     }
 
-    // #[test]
-    // fn tree_test_get_pass() {
-    //     let mut tree_root = LTree::with(1, '1');
-    //     tree_root.insert(0, '0');
-    //     tree_root.insert(2, '2');
-    //     assert_eq!(tree_root.get(&0), Some(&'0'));
-    //     assert_eq!(tree_root.get(&1), Some(&'1'));
-    //     assert_eq!(tree_root.get(&2), Some(&'2'));
-    // }
+    #[test]
+    fn tree_test_get_pass() {
+        let mut tree_root = LTree::with(1, '1');
+        tree_root.insert(0, '0');
+        tree_root.insert(2, '2');
+        assert_eq!(tree_root.get(&0), Some(&'0'));
+        assert_eq!(tree_root.get(&1), Some(&'1'));
+        assert_eq!(tree_root.get(&2), Some(&'2'));
+    }
 
     //     #[test]
     //     fn tree_test_iter_pass() {
