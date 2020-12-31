@@ -4,23 +4,23 @@ use core::{borrow::Borrow, cmp::Ordering, default::Default, mem};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct LTree<K, V> {
-    // Index of Self::node_slots containing the root.
+    // Index of Self::nodes containing the root.
     root: Option<usize>,
     // The actual nodes of this tree.
     //
     // NOTE: the left and right children of each node are stored as
-    //       indices into Self::node_slots and are not pointers.
-    node_slots: Vec<Option<LNode<K, V>>>,
-    // Indices in Self::node_slots that are available for reuse.
-    free_slots: Vec<usize>,
+    //       indices into Self::nodes.
+    nodes: Vec<Option<LNode<K, V>>>,
+    // Indices in Self::nodes that are available for reuse.
+    free_nodes: Vec<usize>,
 }
 
 impl<K, V> Default for LTree<K, V> {
     fn default() -> Self {
         Self {
             root: None,
-            node_slots: vec![],
-            free_slots: vec![],
+            nodes: vec![],
+            free_nodes: vec![],
         }
     }
 }
@@ -111,7 +111,7 @@ impl<K: Ord, V> LTree<K, V> {
         K: Ord + Borrow<Q>,
         Q: Ord,
     {
-        let node = self.node_slots[slot].as_ref().expect("invalid slot");
+        let node = self.nodes[slot].as_ref().expect("invalid slot");
         let maybe_slot = match node.k.borrow().cmp(k) {
             Ordering::Less => node.l,
             Ordering::Equal => return Some(&node.v),
@@ -137,9 +137,9 @@ impl<K: Ord, V> LTree<K, V> {
     where
         K: Ord,
     {
-        self.node_slots
+        self.nodes
             .len()
-            .checked_sub(self.free_slots.len())
+            .checked_sub(self.free_nodes.len())
             .expect("cannot have more free slots than total slots")
     }
 
@@ -178,15 +178,15 @@ impl<K: Ord, V> LTree<K, V> {
     //     Iter::new(self)
     // }
 
-    // fn node_slots(&self) -> LNodeIter<K, V> {
+    // fn nodes(&self) -> LNodeIter<K, V> {
     //     LNodeIter::new(self)
     // }
 }
 
 impl<K: Ord, V> LTree<K, V> {
     fn insert_at_slot(&mut self, idx: usize, k: K, v: V) -> Option<V> {
-        debug_assert!(self.node_slots.len() > idx);
-        let maybe_slot: (Option<usize>, bool) = match &mut self.node_slots[idx] {
+        debug_assert!(self.nodes.len() > idx);
+        let maybe_slot: (Option<usize>, bool) = match &mut self.nodes[idx] {
             place @ None => {
                 *place = Some(LNode::new(k, v));
                 return None;
@@ -202,14 +202,14 @@ impl<K: Ord, V> LTree<K, V> {
         match maybe_slot {
             (None, false) => {
                 let new_slot = self.new_slot();
-                self.node_slots[idx].as_mut().expect("invalid slot").l = Some(new_slot);
-                self.node_slots[new_slot] = Some(LNode::new(k, v));
+                self.nodes[idx].as_mut().expect("invalid slot").l = Some(new_slot);
+                self.nodes[new_slot] = Some(LNode::new(k, v));
                 None
             }
             (None, true) => {
                 let new_slot = self.new_slot();
-                self.node_slots[idx].as_mut().expect("invalid slot").r = Some(new_slot);
-                self.node_slots[new_slot] = Some(LNode::new(k, v));
+                self.nodes[idx].as_mut().expect("invalid slot").r = Some(new_slot);
+                self.nodes[new_slot] = Some(LNode::new(k, v));
                 None
             }
             (Some(child_slot), _) => self.insert_at_slot(child_slot, k, v),
@@ -217,11 +217,11 @@ impl<K: Ord, V> LTree<K, V> {
     }
 
     fn new_slot(&mut self) -> usize {
-        let slot = self.free_slots.pop().unwrap_or_else(|| {
-            self.node_slots.push(None);
-            self.node_slots.len() - 1
+        let slot = self.free_nodes.pop().unwrap_or_else(|| {
+            self.nodes.push(None);
+            self.nodes.len() - 1
         });
-        debug_assert!(self.node_slots[slot].is_none());
+        debug_assert!(self.nodes[slot].is_none());
         slot
     }
 }
@@ -432,13 +432,13 @@ impl<K: Ord, V> LNode<K, V> {
 //     K: ::std::fmt::Display + Copy + Ord,
 //     V: ::std::fmt::Display + Copy,
 // {
-//     fn node_slots(&'a self) -> dot::Node_Slots<'a, (K, V)> {
-//         ::std::borrow::Cow::Owned(self.node_slots().map(|&LNode { k, v, .. }| (k, v)).collect())
+//     fn nodes(&'a self) -> dot::Nodes<'a, (K, V)> {
+//         ::std::borrow::Cow::Owned(self.nodes().map(|&LNode { k, v, .. }| (k, v)).collect())
 //     }
 
 //     fn edges(&'a self) -> dot::Edges<'a, (K, K)> {
 //         let mut edges: Vec<(K, K)> = Vec::new();
-//         for LNode { k, l, r, .. } in self.node_slots() {
+//         for LNode { k, l, r, .. } in self.nodes() {
 //             if let Some(l) = l.as_deref() {
 //                 edges.push((*k, l.k));
 //             }
