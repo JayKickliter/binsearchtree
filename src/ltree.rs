@@ -112,7 +112,7 @@ impl<K: Ord, V> LTree<K, V> {
         Q: Ord,
     {
         let node = self.nodes[slot].as_ref().expect("invalid slot");
-        let maybe_slot = match node.k.borrow().cmp(k) {
+        let maybe_slot = match k.cmp(node.k.borrow()) {
             Ordering::Less => node.l,
             Ordering::Equal => return Some(&node.v),
             Ordering::Greater => node.r,
@@ -159,60 +159,65 @@ impl<K: Ord, V> LTree<K, V> {
         self.nodes.len() == self.free_nodes.len()
     }
 
-    // /// Returns an sorted key-value iterator over the `Tree`.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use binsearchtree::LTree;
-    // ///
-    // /// let mut tree = LTree::with(3, 'a');
-    // /// tree.insert(2, 'b');
-    // /// tree.insert(1, 'c');
-    // ///
-    // /// // Collect key-value pairs.
-    // /// let key_vals: Vec<(i32, char)> = tree.iter().map(|(&k, &v)| (k, v)).collect();
-    // /// assert_eq!(key_vals, vec![(1, 'c'), (2, 'b'), (3, 'a')]);
-    // /// ```
-    // pub fn iter(&self) -> Iter<K, V> {
-    //     Iter::new(self)
-    // }
-
-    // fn nodes(&self) -> LNodeIter<K, V> {
-    //     LNodeIter::new(self)
-    // }
+    /// Returns an sorted key-value iterator over the `Tree`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::LTree;
+    ///
+    /// let mut tree = LTree::with(3, 'a');
+    /// tree.insert(2, 'b');
+    /// tree.insert(1, 'c');
+    ///
+    /// // Collect key-value pairs.
+    /// let key_vals: Vec<(i32, char)> = tree.iter().map(|(&k, &v)| (k, v)).collect();
+    /// assert_eq!(key_vals, vec![(1, 'c'), (2, 'b'), (3, 'a')]);
+    /// ```
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter(LNodeIter {
+            curr: self.root,
+            nodes: &self.nodes[..],
+            stack: vec![],
+        })
+    }
 }
 
 impl<K: Ord, V> LTree<K, V> {
     fn insert_at_slot(&mut self, idx: usize, k: K, v: V) -> Option<V> {
         debug_assert!(self.nodes.len() > idx);
-        let maybe_slot: (Option<usize>, bool) = match &mut self.nodes[idx] {
+        let maybe_slot: (Option<usize>, Ordering) = match &mut self.nodes[idx] {
             place @ None => {
                 *place = Some(LNode::new(k, v));
                 return None;
             }
-            Some(node) => match node.k.cmp(&k) {
-                // TODO: use something better than bool for
-                // indicating left/right.
-                Ordering::Less => (node.l, false),
+            Some(node) => match k.cmp(&node.k) {
+                ord @ Ordering::Less => (node.l, ord),
                 Ordering::Equal => return Some(mem::replace(&mut node.v, v)),
-                Ordering::Greater => (node.r, true),
+                ord @ Ordering::Greater => (node.r, ord),
             },
         };
         match maybe_slot {
-            (None, false) => {
+            (None, Ordering::Less) => {
                 let new_slot = self.new_slot();
                 self.nodes[idx].as_mut().expect("invalid slot").l = Some(new_slot);
                 self.nodes[new_slot] = Some(LNode::new(k, v));
                 None
             }
-            (None, true) => {
+
+            (None, Ordering::Greater) => {
                 let new_slot = self.new_slot();
                 self.nodes[idx].as_mut().expect("invalid slot").r = Some(new_slot);
                 self.nodes[new_slot] = Some(LNode::new(k, v));
                 None
             }
+
             (Some(child_slot), _) => self.insert_at_slot(child_slot, k, v),
+
+            (_, Ordering::Equal) => {
+                // equal is taken care of in previous block
+                unreachable!()
+            }
         }
     }
 
@@ -248,93 +253,43 @@ impl<K: Ord, V> LNode<K, V> {
             r: None,
         }
     }
-
-    // pub(crate) fn insert(&mut self, k: K, v: V) -> Option<V> {
-    //     let lr = match self.k.cmp(&k) {
-    //         Ordering::Greater => &mut self.l,
-    //         Ordering::Equal => {
-    //             return Some(mem::replace(&mut self.v, v));
-    //         }
-    //         Ordering::Less => &mut self.r,
-    //     };
-    //     match lr {
-    //         None => {
-    //             *lr = Some(Box::new(Self::new(k, v)));
-    //             None
-    //         }
-    //         Some(node) => node.as_mut().insert(k, v),
-    //     }
-    // }
-
-    // pub(crate) fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
-    // where
-    //     K: Borrow<Q>,
-    //     Q: Ord,
-    // {
-    //     let lr = match self.k.borrow().cmp(k) {
-    //         Ordering::Greater => &self.l,
-    //         Ordering::Equal => return Some(&self.v),
-    //         Ordering::Less => &self.r,
-    //     };
-    //     match lr {
-    //         None => None,
-    //         Some(node) => node.as_ref().get(k),
-    //     }
-    // }
-
-    // pub(crate) fn len(&self) -> usize {
-    //     self.l.as_ref().map_or(0, |node| node.len())
-    //         + 1
-    //         + self.r.as_ref().map_or(0, |node| node.len())
-    // }
 }
 
-// pub struct Iter<'a, K, V>(LNodeIter<'a, K, V>);
+pub struct Iter<'a, K, V>(LNodeIter<'a, K, V>);
 
-// impl<'a, K, V> Iter<'a, K, V> {
-//     fn new(tree: &'a LTree<K, V>) -> Self {
-//         Iter(LNodeIter::new(tree))
-//     }
-// }
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
 
-// impl<'a, K, V> Iterator for Iter<'a, K, V> {
-//     type Item = (&'a K, &'a V);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|node| (&node.k, &node.v))
+    }
+}
 
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.0.next().map(|node| (&node.k, &node.v))
-//     }
-// }
+pub struct LNodeIter<'a, K, V> {
+    curr: Option<usize>,
+    nodes: &'a [Option<LNode<K, V>>],
+    stack: Vec<usize>,
+}
 
-// pub struct LNodeIter<'a, K, V> {
-//     curr: Option<&'a LNode<K, V>>,
-//     stack: Vec<&'a LNode<K, V>>,
-// }
+impl<'a, K, V> Iterator for LNodeIter<'a, K, V> {
+    type Item = &'a LNode<K, V>;
 
-// impl<'a, K, V> LNodeIter<'a, K, V> {
-//     pub fn new(tree: &'a LTree<K, V>) -> Self {
-//         Self {
-//             curr: tree.0.as_deref(),
-//             stack: Vec::new(),
-//         }
-//     }
-// }
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(curr) = self.curr {
+            self.stack.push(curr);
+            let node = self.nodes[curr].as_ref();
+            self.curr = node.and_then(|node| node.l);
+        }
 
-// impl<'a, K, V> Iterator for LNodeIter<'a, K, V> {
-//     type Item = &'a LNode<K, V>;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         while let Some(curr) = self.curr {
-//             self.stack.push(curr);
-//             self.curr = curr.l.as_deref();
-//         }
-//         if let Some(it) = self.stack.pop() {
-//             self.curr = it.r.as_deref();
-//             Some(it)
-//         } else {
-//             None
-//         }
-//     }
-// }
+        if let Some(it) = self.stack.pop() {
+            let node = self.nodes[it].as_ref();
+            self.curr = node.and_then(|node| node.r);
+            node
+        } else {
+            None
+        }
+    }
+}
 
 // pub(crate) fn l<K, V>(root: &Option<Box<LNode<K, V>>>) -> Option<&LNode<K, V>> {
 //     match root {
@@ -519,19 +474,19 @@ mod tests {
         assert_eq!(tree_root.get(&2), Some(&'2'));
     }
 
-    //     #[test]
-    //     fn tree_test_iter_pass() {
-    //         let mut tree: LTree<u8, ()> = LTree::new();
-    //         for _ in 0..100 {
-    //             tree.insert(rand::random(), ());
-    //         }
-    //         let mut iter = tree.iter();
-    //         let mut last = *iter.next().unwrap().0;
-    //         for (&k, _) in iter {
-    //             assert!(k > last);
-    //             last = k;
-    //         }
-    //     }
+    #[test]
+    fn tree_test_iter_pass() {
+        let mut tree: LTree<u8, ()> = LTree::new();
+        for _ in 0..100 {
+            tree.insert(rand::random(), ());
+        }
+        let mut iter = tree.iter();
+        let mut last = *iter.next().unwrap().0;
+        for (&k, _) in iter {
+            assert!(k > last);
+            last = k;
+        }
+    }
 
     //     #[test]
     //     fn node_rotate_r_pass() {

@@ -10,4 +10,13 @@ fn main() {
     tree.insert(6, ());
     tree.insert(8, ());
     println!("{:#?}", tree);
+
+    let mut tree = LTree::new();
+    for (v, k) in (0..100).into_iter().rev().enumerate() {
+        tree.insert(k, v);
+    }
+    let iter = tree.iter();
+    for kv in iter {
+        print!("{:?} ", kv);
+    }
 }
