@@ -155,41 +155,44 @@ impl<K: Ord, V> LTree<K, V> {
         maybe_slot.and_then(|slot| self.get_slot(slot, k))
     }
 
-    // /// Returns the number of key-value pairs in the Tree.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use binsearchtree::LTree;
-    // ///
-    // /// let mut tree = LTree::new();
-    // /// assert_eq!(tree.len(), 0);
-    // /// tree.insert(1, 'a');
-    // /// tree.insert(2, 'b');
-    // /// assert_eq!(tree.len(), 2);
-    // /// ```
-    // pub fn len(&self) -> usize
-    // where
-    //     K: Ord,
-    // {
-    //     self.0.as_ref().map_or(0, |node| node.len())
-    // }
+    /// Returns the number of key-value pairs in the Tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::LTree;
+    ///
+    /// let mut tree = LTree::new();
+    /// assert_eq!(tree.len(), 0);
+    /// tree.insert(1, 'a');
+    /// tree.insert(2, 'b');
+    /// assert_eq!(tree.len(), 2);
+    /// ```
+    pub fn len(&self) -> usize
+    where
+        K: Ord,
+    {
+        self.node_slots
+            .len()
+            .checked_sub(self.free_slots.len())
+            .expect("cannot have more free slots than total slots")
+    }
 
-    // /// Returns `true` if the tree is empty.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use binsearchtree::LTree;
-    // ///
-    // /// let mut tree = LTree::new();
-    // /// assert_eq!(tree.is_empty(), true);
-    // /// tree.insert(3, 'c');
-    // /// assert_eq!(tree.is_empty(), false);
-    // /// ```
-    // pub fn is_empty(&self) -> bool {
-    //     self.0.is_none()
-    // }
+    /// Returns `true` if the tree is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use binsearchtree::LTree;
+    ///
+    /// let mut tree = LTree::new();
+    /// assert_eq!(tree.is_empty(), true);
+    /// tree.insert(3, 'c');
+    /// assert_eq!(tree.is_empty(), false);
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.nodes.len() == self.free_nodes.len()
+    }
 
     // /// Returns an sorted key-value iterator over the `Tree`.
     // ///
