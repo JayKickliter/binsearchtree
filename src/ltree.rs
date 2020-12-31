@@ -4,8 +4,14 @@ use core::{borrow::Borrow, cmp::Ordering, default::Default, mem};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct LTree<K, V> {
+    // Index of Self::node_slots containing the root.
     root: Option<usize>,
+    // The actual nodes of this tree.
+    //
+    // NOTE: the left and right children of each node are stored as
+    //       indices into Self::node_slots and are not pointers.
     node_slots: Vec<Option<LNode<K, V>>>,
+    // Indices in Self::node_slots that are available for reuse.
     free_slots: Vec<usize>,
 }
 
