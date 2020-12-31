@@ -82,47 +82,6 @@ impl<K: Ord, V> LTree<K, V> {
         self.insert_at_slot(root_slot, k, v)
     }
 
-    fn insert_at_slot(&mut self, idx: usize, k: K, v: V) -> Option<V> {
-        debug_assert!(self.node_slots.len() > idx);
-        let maybe_slot: (Option<usize>, bool) = match &mut self.node_slots[idx] {
-            place @ None => {
-                *place = Some(LNode::new(k, v));
-                return None;
-            }
-            Some(node) => match node.k.cmp(&k) {
-                // TODO: use something better than bool for
-                // indicating left/right.
-                Ordering::Less => (node.l, false),
-                Ordering::Equal => return Some(mem::replace(&mut node.v, v)),
-                Ordering::Greater => (node.r, true),
-            },
-        };
-        match maybe_slot {
-            (None, false) => {
-                let new_slot = self.new_slot();
-                self.node_slots[idx].as_mut().expect("invalid slot").l = Some(new_slot);
-                self.node_slots[new_slot] = Some(LNode::new(k, v));
-                None
-            }
-            (None, true) => {
-                let new_slot = self.new_slot();
-                self.node_slots[idx].as_mut().expect("invalid slot").r = Some(new_slot);
-                self.node_slots[new_slot] = Some(LNode::new(k, v));
-                None
-            }
-            (Some(child_slot), _) => self.insert_at_slot(child_slot, k, v),
-        }
-    }
-
-    fn new_slot(&mut self) -> usize {
-        let slot = self.free_slots.pop().unwrap_or_else(|| {
-            self.node_slots.push(None);
-            self.node_slots.len() - 1
-        });
-        debug_assert!(self.node_slots[slot].is_none());
-        slot
-    }
-
     /// Returns a reference to the value for `k`.
     ///
     /// # Examples
@@ -216,6 +175,49 @@ impl<K: Ord, V> LTree<K, V> {
     // fn node_slots(&self) -> LNodeIter<K, V> {
     //     LNodeIter::new(self)
     // }
+}
+
+impl<K: Ord, V> LTree<K, V> {
+    fn insert_at_slot(&mut self, idx: usize, k: K, v: V) -> Option<V> {
+        debug_assert!(self.node_slots.len() > idx);
+        let maybe_slot: (Option<usize>, bool) = match &mut self.node_slots[idx] {
+            place @ None => {
+                *place = Some(LNode::new(k, v));
+                return None;
+            }
+            Some(node) => match node.k.cmp(&k) {
+                // TODO: use something better than bool for
+                // indicating left/right.
+                Ordering::Less => (node.l, false),
+                Ordering::Equal => return Some(mem::replace(&mut node.v, v)),
+                Ordering::Greater => (node.r, true),
+            },
+        };
+        match maybe_slot {
+            (None, false) => {
+                let new_slot = self.new_slot();
+                self.node_slots[idx].as_mut().expect("invalid slot").l = Some(new_slot);
+                self.node_slots[new_slot] = Some(LNode::new(k, v));
+                None
+            }
+            (None, true) => {
+                let new_slot = self.new_slot();
+                self.node_slots[idx].as_mut().expect("invalid slot").r = Some(new_slot);
+                self.node_slots[new_slot] = Some(LNode::new(k, v));
+                None
+            }
+            (Some(child_slot), _) => self.insert_at_slot(child_slot, k, v),
+        }
+    }
+
+    fn new_slot(&mut self) -> usize {
+        let slot = self.free_slots.pop().unwrap_or_else(|| {
+            self.node_slots.push(None);
+            self.node_slots.len() - 1
+        });
+        debug_assert!(self.node_slots[slot].is_none());
+        slot
+    }
 }
 
 /// A node in a binary search tree
